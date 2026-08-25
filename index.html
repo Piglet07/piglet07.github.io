@@ -1,31 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-HK">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LOHAS Park MTR Live Departures | 康城站實時班次</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOHAS Park MTR Departures | 康城站實時班次</title>
   <style>
     :root {
       --bg: #0f172a;
       --card: #1e293b;
-      --card-item: #334155;
+      --card-inner: #334155;
+      --border: #475569;
       --text: #f8fafc;
       --text-muted: #94a3b8;
-      --border: #475569;
-      --purple: #9333ea;
-      --green: #22c55e;
-      --amber: #f59e0b;
-      --red: #ef4444;
-    }
-
-    body.light-mode {
-      --bg: #f1f5f9;
-      --card: #ffffff;
-      --card-item: #f8fafc;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #cbd5e1;
-      --purple: #7e22ce;
+      --tkl-purple: #9333ea;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
     }
 
     * {
@@ -43,17 +33,16 @@
       align-items: flex-start;
       min-height: 100vh;
       padding: 24px 16px;
-      transition: background-color 0.2s ease;
     }
 
     .dashboard {
       width: 100%;
-      max-width: 560px;
+      max-width: 540px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      padding: 22px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
 
     .header {
@@ -70,7 +59,7 @@
       gap: 6px;
       font-size: 0.75rem;
       font-weight: bold;
-      color: var(--purple);
+      color: #c084fc;
       text-transform: uppercase;
     }
 
@@ -78,7 +67,8 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background-color: var(--purple);
+      background-color: var(--tkl-purple);
+      box-shadow: 0 0 6px var(--tkl-purple);
     }
 
     .station-title {
@@ -112,12 +102,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin: 14px 0;
+      margin: 14px 0 10px 0;
       font-size: 0.8rem;
     }
 
     .btn {
-      background: var(--card-item);
+      background: var(--card-inner);
       color: var(--text);
       border: 1px solid var(--border);
       padding: 6px 12px;
@@ -130,21 +120,6 @@
       opacity: 0.85;
     }
 
-    .status-banner {
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      margin-bottom: 14px;
-      display: none;
-    }
-
-    .status-banner.warning {
-      display: block;
-      background: rgba(245, 158, 11, 0.15);
-      border: 1px solid var(--amber);
-      color: var(--amber);
-    }
-
     .train-list {
       display: flex;
       flex-direction: column;
@@ -152,7 +127,7 @@
     }
 
     .train-item {
-      background: var(--card-item);
+      background: var(--card-inner);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px 14px;
@@ -171,13 +146,13 @@
       width: 36px;
       height: 36px;
       border-radius: 8px;
-      background: rgba(147, 51, 234, 0.15);
-      border: 1px solid var(--purple);
+      background: rgba(147, 51, 234, 0.2);
+      border: 1px solid var(--tkl-purple);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: var(--purple);
+      color: #e9d5ff;
       font-weight: bold;
       font-size: 0.8rem;
     }
@@ -201,22 +176,24 @@
       font-size: 1.4rem;
       font-weight: bold;
       font-family: monospace;
-      color: var(--purple);
+      color: #d8b4fe;
     }
 
     .eta-now {
       font-size: 0.75rem;
       font-weight: bold;
-      color: var(--amber);
+      color: var(--accent-amber);
       padding: 3px 8px;
       background: rgba(245, 158, 11, 0.15);
-      border: 1px solid var(--amber);
+      border: 1px solid var(--accent-amber);
       border-radius: 12px;
-      animation: blink 1.5s infinite;
     }
 
-    @keyframes blink {
-      50% { opacity: 0.4; }
+    .status-msg {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
     }
 
     .footer {
@@ -250,25 +227,18 @@
 
     <!-- Toolbar -->
     <div class="toolbar">
-      <span>Departures (往港島/調景嶺)</span>
-      <div style="display: flex; gap: 6px;">
-        <button class="btn" id="themeToggle" onclick="toggleTheme()">☀️ Light Mode</button>
-        <button class="btn" onclick="loadDepartures()">🔄 Refresh</button>
-      </div>
+      <span>Platform Departures (往港島 / 調景嶺)</span>
+      <button class="btn" onclick="fetchDepartures()">🔄 Refresh Now</button>
     </div>
-
-    <div id="noticeBanner" class="status-banner"></div>
 
     <!-- Departure List -->
     <div class="train-list" id="trainList">
-      <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-        Loading live departures...
-      </div>
+      <div class="status-msg" id="statusMessage">Connecting to MTR Live Data...</div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <span id="sourceLabel">Source: MTR Open Data</span>
+      <span id="sourceLabel">Source: MTR Open Data via CORS Gateway</span>
       <span id="updatedTime">Updated: --</span>
     </div>
   </div>
@@ -283,88 +253,77 @@
 
     let countdown = 30;
 
-    function toggleTheme() {
-      document.body.classList.toggle('light-mode');
-      const isLight = document.body.classList.contains('light-mode');
-      document.getElementById('themeToggle').textContent = isLight ? '🌙 Dark Mode' : '☀️ Light Mode';
-    }
-
     function updateClock() {
       const now = new Date();
       document.getElementById('liveClock').textContent = now.toLocaleTimeString('en-HK', { hour12: false });
     }
 
-    async function loadDepartures() {
+    async function fetchDepartures() {
       const listEl = document.getElementById('trainList');
-      const noticeEl = document.getElementById('noticeBanner');
       const updatedEl = document.getElementById('updatedTime');
       countdown = 30;
 
-      const url = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
+      const rawUrl = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
+      // Route through public CORS proxy so it works in any browser and local file
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`;
 
       try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('API offline');
-        const json = await res.json();
+        let response = null;
+        try {
+          // Attempt 1: Direct fetch
+          response = await fetch(rawUrl);
+        } catch (e) {
+          // Attempt 2: CORS Proxy if direct fetch is blocked
+          response = await fetch(proxyUrl);
+        }
+
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        
+        const text = await response.text();
+        const json = JSON.parse(text);
 
         if (json.status === 0 || !json.data || !json.data['TKL-LHP']) {
-          renderList([]);
+          listEl.innerHTML = '<div class="status-msg">No train service or outside operating hours.</div>';
           return;
         }
 
-        noticeEl.className = 'status-banner';
-        noticeEl.style.display = 'none';
-        renderList(json.data['TKL-LHP'].UP || []);
-      } catch (err) {
-        // Fallback for file:/// security lock or offline mode
-        noticeEl.className = 'status-banner warning';
-        noticeEl.innerHTML = '⚠️ Note: Browser blocked direct connection (common with local files). Showing simulated timetable:';
-        renderDemoData();
-      }
+        const departures = json.data['TKL-LHP'].UP || [];
 
-      updatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-HK', { hour12: false });
-    }
+        if (departures.length === 0) {
+          listEl.innerHTML = '<div class="status-msg">No upcoming departures at this moment.</div>';
+          return;
+        }
 
-    function renderList(trains) {
-      const listEl = document.getElementById('trainList');
-      if (!trains || trains.length === 0) {
-        listEl.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-muted);">No upcoming departures reported at this time.</div>';
-        return;
-      }
+        listEl.innerHTML = departures.map(t => {
+          const dest = STATIONS[t.dest] || { en: t.dest, zh: '' };
+          const isDirect = t.dest === 'NOP';
+          const mins = parseInt(t.ttnt, 10);
+          const etaHtml = (mins <= 1 || t.ttnt === '0') 
+            ? `<span class="eta-now">Arriving / 即將抵達</span>` 
+            : `<span class="eta-val">${t.ttnt}<span style="font-size:0.75rem; color: var(--text-muted);"> min</span></span>`;
 
-      listEl.innerHTML = trains.map(t => {
-        const dest = STATIONS[t.dest] || { en: t.dest, zh: '' };
-        const isDirect = t.dest === 'NOP';
-        const mins = parseInt(t.ttnt, 10);
-        const etaHtml = (mins <= 1 || t.ttnt === '0') 
-          ? `<span class="eta-now">Arriving / 即將抵達</span>` 
-          : `<span class="eta-val">${t.ttnt}<span style="font-size:0.75rem; color: var(--text-muted);"> min</span></span>`;
-
-        return `
-          <div class="train-item">
-            <div class="train-info">
-              <div class="plat">P${t.plat || '1'}</div>
-              <div>
-                <div class="dest-name">${dest.en} <span style="font-size:0.85rem; color:var(--text-muted);">${dest.zh}</span></div>
-                <div class="dest-sub">
-                  <span style="color:${isDirect ? 'var(--green)' : 'var(--amber)'};">● ${isDirect ? 'Direct' : 'Shuttle (Transfer at TIK)'}</span>
-                  • ${t.time ? t.time.split(' ')[1] : ''}
+          return `
+            <div class="train-item">
+              <div class="train-info">
+                <div class="plat">P${t.plat || '1'}</div>
+                <div>
+                  <div class="dest-name">${dest.en} <span style="font-size:0.85rem; color:var(--text-muted);">${dest.zh}</span></div>
+                  <div class="dest-sub">
+                    <span style="color:${isDirect ? 'var(--accent-green)' : 'var(--accent-amber)'};">● ${isDirect ? 'Direct (直達港島)' : 'Shuttle (需轉車)'}</span>
+                    • ${t.time ? t.time.split(' ')[1] : ''}
+                  </div>
                 </div>
               </div>
+              <div class="eta-box">${etaHtml}</div>
             </div>
-            <div class="eta-box">${etaHtml}</div>
-          </div>
-        `;
-      }).join('');
-    }
+          `;
+        }).join('');
 
-    function renderDemoData() {
-      const now = new Date();
-      renderList([
-        { plat: '1', dest: 'NOP', ttnt: '3', time: new Date(now.getTime() + 3*60000).toTimeString().slice(0,8) },
-        { plat: '1', dest: 'TIK', ttnt: '10', time: new Date(now.getTime() + 10*60000).toTimeString().slice(0,8) },
-        { plat: '1', dest: 'NOP', ttnt: '17', time: new Date(now.getTime() + 17*60000).toTimeString().slice(0,8) }
-      ]);
+        updatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-HK', { hour12: false });
+      } catch (err) {
+        console.error('Error fetching MTR schedule:', err);
+        listEl.innerHTML = '<div class="status-msg" style="color: var(--accent-red);">Failed to load live MTR data. Please check internet access or try refreshing.</div>';
+      }
     }
 
     // Interval timers
@@ -372,11 +331,11 @@
     setInterval(() => {
       countdown = countdown > 1 ? countdown - 1 : 30;
       document.getElementById('timer').textContent = countdown;
-      if (countdown === 30) loadDepartures();
+      if (countdown === 30) fetchDepartures();
     }, 1000);
 
     updateClock();
-    loadDepartures();
+    fetchDepartures();
   </script>
 </body>
 </html>
