@@ -1,21 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LOHAS Park MTR Live Departures | 康城站實時班次</title>
   <style>
     :root {
-      --bg-color: #0b0f19;
-      --card-bg: #151c2e;
-      --card-inner: #1b243b;
-      --border-color: #273553;
-      --text-main: #f1f5f9;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-item: #334155;
+      --text: #f8fafc;
       --text-muted: #94a3b8;
-      --tkl-purple: #704285;
-      --accent-green: #34d399;
-      --accent-amber: #fbbf24;
-      --accent-red: #f87171;
+      --border: #475569;
+      --purple: #9333ea;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body.light-mode {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --card-item: #f8fafc;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --purple: #7e22ce;
     }
 
     * {
@@ -26,242 +36,193 @@
     }
 
     body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
+      background-color: var(--bg);
+      color: var(--text);
       display: flex;
       justify-content: center;
       align-items: flex-start;
       min-height: 100vh;
       padding: 24px 16px;
+      transition: background-color 0.2s ease;
     }
 
-    .dashboard-container {
+    .dashboard {
       width: 100%;
-      max-width: 580px;
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
+      max-width: 560px;
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     }
 
     .header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
     }
 
-    .line-badge {
+    .line-tag {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+      font-weight: bold;
+      color: var(--purple);
       text-transform: uppercase;
-      color: #d8b4fe;
-      margin-bottom: 4px;
     }
 
-    .line-dot {
+    .dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background-color: var(--tkl-purple);
-      box-shadow: 0 0 8px var(--tkl-purple);
+      background-color: var(--purple);
     }
 
-    .station-name {
-      font-size: 1.5rem;
+    .station-title {
+      font-size: 1.4rem;
       font-weight: 700;
-      color: var(--text-main);
+      margin-top: 4px;
     }
 
-    .station-name span {
-      font-size: 1.2rem;
+    .station-title span {
+      font-size: 1.1rem;
       color: var(--text-muted);
-      margin-left: 6px;
       font-weight: normal;
     }
 
-    .clock-section {
+    .clock-box {
       text-align: right;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family: monospace;
     }
 
     .clock-time {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-main);
+      font-size: 1.4rem;
+      font-weight: bold;
     }
 
-    .clock-refresh {
-      font-size: 0.75rem;
+    .clock-sub {
+      font-size: 0.7rem;
       color: var(--text-muted);
-      margin-top: 2px;
     }
 
-    .controls {
+    .toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin: 16px 0 12px 0;
+      margin: 14px 0;
       font-size: 0.8rem;
-      color: var(--text-muted);
     }
 
-    .btn-refresh {
-      background: var(--card-inner);
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
+    .btn {
+      background: var(--card-item);
+      color: var(--text);
+      border: 1px solid var(--border);
       padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    .status-banner {
+      padding: 10px 12px;
       border-radius: 8px;
       font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s;
+      margin-bottom: 14px;
+      display: none;
     }
 
-    .btn-refresh:hover {
-      background: var(--border-color);
+    .status-banner.warning {
+      display: block;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--amber);
+      color: var(--amber);
     }
 
-    .btn-refresh:active {
-      transform: scale(0.97);
-    }
-
-    .departure-list {
+    .train-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    .train-card {
-      background: var(--card-inner);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 14px 16px;
+    .train-item {
+      background: var(--card-item);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: border-color 0.2s ease;
     }
 
-    .train-card:hover {
-      border-color: #4b5563;
-    }
-
-    .train-left {
+    .train-info {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
-    .plat-badge {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: rgba(112, 66, 133, 0.25);
-      border: 1px solid var(--tkl-purple);
+    .plat {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(147, 51, 234, 0.15);
+      border: 1px solid var(--purple);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #e9d5ff;
+      color: var(--purple);
+      font-weight: bold;
+      font-size: 0.8rem;
     }
 
-    .plat-title {
-      font-size: 0.6rem;
-      text-transform: uppercase;
-      opacity: 0.8;
-      line-height: 1;
-    }
-
-    .plat-num {
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-
-    .dest-title {
-      font-size: 1rem;
+    .dest-name {
       font-weight: 600;
-      color: var(--text-main);
+      font-size: 0.95rem;
     }
 
-    .dest-title span {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-left: 6px;
-    }
-
-    .dest-meta {
+    .dest-sub {
       font-size: 0.75rem;
-      margin-top: 2px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .route-direct {
-      color: var(--accent-green);
-    }
-
-    .route-shuttle {
-      color: var(--accent-amber);
-    }
-
-    .time-sched {
       color: var(--text-muted);
-      font-family: ui-monospace, SFMono-Regular, monospace;
+      margin-top: 2px;
     }
 
-    .train-right {
+    .eta-box {
       text-align: right;
     }
 
-    .eta-badge {
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #d8b4fe;
+    .eta-val {
+      font-size: 1.4rem;
+      font-weight: bold;
+      font-family: monospace;
+      color: var(--purple);
     }
 
-    .eta-unit {
+    .eta-now {
       font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-left: 2px;
-      font-family: inherit;
+      font-weight: bold;
+      color: var(--amber);
+      padding: 3px 8px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--amber);
+      border-radius: 12px;
+      animation: blink 1.5s infinite;
     }
 
-    .eta-arriving {
-      font-size: 0.85rem;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 20px;
-      background: rgba(251, 191, 36, 0.15);
-      border: 1px solid rgba(251, 191, 36, 0.4);
-      color: var(--accent-amber);
-      animation: pulse 1.8s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .status-msg {
-      text-align: center;
-      padding: 30px 16px;
-      font-size: 0.9rem;
-      color: var(--text-muted);
+    @keyframes blink {
+      50% { opacity: 0.4; }
     }
 
     .footer {
-      margin-top: 18px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border-color);
+      margin-top: 16px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       font-size: 0.7rem;
@@ -271,38 +232,49 @@
 </head>
 <body>
 
-  <div class="dashboard-container">
+  <div class="dashboard">
+    <!-- Header -->
     <div class="header">
       <div>
-        <div class="line-badge">
-          <span class="line-dot"></span>
+        <div class="line-tag">
+          <span class="dot"></span>
           <span>Tseung Kwan O Line (將軍澳綫)</span>
         </div>
-        <div class="station-name">LOHAS Park <span>康城</span></div>
+        <div class="station-title">LOHAS Park <span>康城</span></div>
       </div>
-      <div class="clock-section">
-        <div class="clock-time" id="clock">--:--:--</div>
-        <div class="clock-refresh">Auto-refreshes in <span id="refresh-timer">30</span>s</div>
+      <div class="clock-box">
+        <div class="clock-time" id="liveClock">--:--:--</div>
+        <div class="clock-sub">Refresh in <span id="timer">30</span>s</div>
       </div>
     </div>
 
-    <div class="controls">
-      <span>Platform Departures (往港島 / 調景嶺)</span>
-      <button class="btn-refresh" id="refreshBtn">🔄 Refresh</button>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <span>Departures (往港島/調景嶺)</span>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn" id="themeToggle" onclick="toggleTheme()">☀️ Light Mode</button>
+        <button class="btn" onclick="loadDepartures()">🔄 Refresh</button>
+      </div>
     </div>
 
-    <div class="departure-list" id="departureList">
-      <div class="status-msg">Fetching live timetable...</div>
+    <div id="noticeBanner" class="status-banner"></div>
+
+    <!-- Departure List -->
+    <div class="train-list" id="trainList">
+      <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+        Loading live departures...
+      </div>
     </div>
 
+    <!-- Footer -->
     <div class="footer">
-      <span>Data source: MTR Open Data (data.gov.hk)</span>
-      <span id="lastUpdated">Updated: --</span>
+      <span id="sourceLabel">Source: MTR Open Data</span>
+      <span id="updatedTime">Updated: --</span>
     </div>
   </div>
 
   <script>
-    const STATION_NAMES = {
+    const STATIONS = {
       'NOP': { en: 'North Point', zh: '北角' },
       'TIK': { en: 'Tiu Keng Leng', zh: '調景嶺' },
       'POA': { en: 'Po Lam', zh: '寶琳' },
@@ -310,109 +282,101 @@
     };
 
     let countdown = 30;
-    const API_URL = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
+
+    function toggleTheme() {
+      document.body.classList.toggle('light-mode');
+      const isLight = document.body.classList.contains('light-mode');
+      document.getElementById('themeToggle').textContent = isLight ? '🌙 Dark Mode' : '☀️ Light Mode';
+    }
 
     function updateClock() {
       const now = new Date();
-      document.getElementById('clock').textContent = now.toLocaleTimeString('en-HK', { 
-        hour12: false, 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-      });
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString('en-HK', { hour12: false });
     }
 
-    async function fetchDepartures() {
-      const listContainer = document.getElementById('departureList');
-      const lastUpdatedEl = document.getElementById('lastUpdated');
+    async function loadDepartures() {
+      const listEl = document.getElementById('trainList');
+      const noticeEl = document.getElementById('noticeBanner');
+      const updatedEl = document.getElementById('updatedTime');
       countdown = 30;
 
+      const url = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
+
       try {
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        
-        const data = await response.json();
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API offline');
+        const json = await res.json();
 
-        if (data.status === 0 || !data.data || !data.data['TKL-LHP']) {
-          listContainer.innerHTML = '<div class="status-msg">No train service or outside operating hours.</div>';
+        if (json.status === 0 || !json.data || !json.data['TKL-LHP']) {
+          renderList([]);
           return;
         }
 
-        const departures = data.data['TKL-LHP'].UP || [];
-
-        if (departures.length === 0) {
-          listContainer.innerHTML = '<div class="status-msg">No upcoming departures reported.</div>';
-          return;
-        }
-
-        let html = '';
-        departures.forEach(train => {
-          const destInfo = STATION_NAMES[train.dest] || { en: train.dest, zh: '' };
-          const isDirect = train.dest === 'NOP';
-          const schedTime = train.time ? train.time.split(' ')[1] : '';
-          const ttntNum = parseInt(train.ttnt, 10);
-
-          let etaMarkup = '';
-          if (train.ttnt === '0' || train.ttnt === '1' || ttntNum <= 1) {
-            etaMarkup = '<span class="eta-arriving">Arriving / 即將抵達</span>';
-          } else {
-            etaMarkup = `<span class="eta-badge">${train.ttnt}<span class="eta-unit">min</span></span>`;
-          }
-
-          html += `
-            <div class="train-card">
-              <div class="train-left">
-                <div class="plat-badge">
-                  <span class="plat-title">Plat</span>
-                  <span class="plat-num">${train.plat || '1'}</span>
-                </div>
-                <div>
-                  <div class="dest-title">
-                    ${destInfo.en} <span>${destInfo.zh}</span>
-                  </div>
-                  <div class="dest-meta">
-                    <span class="${isDirect ? 'route-direct' : 'route-shuttle'}">
-                      ● ${isDirect ? 'Direct to HK Island' : 'Shuttle (Transfer at TIK/TKO)'}
-                    </span>
-                    <span>•</span>
-                    <span class="time-sched">${schedTime}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="train-right">
-                ${etaMarkup}
-              </div>
-            </div>
-          `;
-        });
-
-        listContainer.innerHTML = html;
-        const now = new Date();
-        lastUpdatedEl.textContent = `Updated: ${now.toLocaleTimeString('en-HK', { hour12: false })}`;
-
+        noticeEl.className = 'status-banner';
+        noticeEl.style.display = 'none';
+        renderList(json.data['TKL-LHP'].UP || []);
       } catch (err) {
-        console.error(err);
-        listContainer.innerHTML = '<div class="status-msg" style="color: var(--accent-red);">Unable to fetch live data. Please check connection.</div>';
+        // Fallback for file:/// security lock or offline mode
+        noticeEl.className = 'status-banner warning';
+        noticeEl.innerHTML = '⚠️ Note: Browser blocked direct connection (common with local files). Showing simulated timetable:';
+        renderDemoData();
       }
+
+      updatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-HK', { hour12: false });
     }
 
-    // Setup timer & click listeners
+    function renderList(trains) {
+      const listEl = document.getElementById('trainList');
+      if (!trains || trains.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; padding: 24px; color: var(--text-muted);">No upcoming departures reported at this time.</div>';
+        return;
+      }
+
+      listEl.innerHTML = trains.map(t => {
+        const dest = STATIONS[t.dest] || { en: t.dest, zh: '' };
+        const isDirect = t.dest === 'NOP';
+        const mins = parseInt(t.ttnt, 10);
+        const etaHtml = (mins <= 1 || t.ttnt === '0') 
+          ? `<span class="eta-now">Arriving / 即將抵達</span>` 
+          : `<span class="eta-val">${t.ttnt}<span style="font-size:0.75rem; color: var(--text-muted);"> min</span></span>`;
+
+        return `
+          <div class="train-item">
+            <div class="train-info">
+              <div class="plat">P${t.plat || '1'}</div>
+              <div>
+                <div class="dest-name">${dest.en} <span style="font-size:0.85rem; color:var(--text-muted);">${dest.zh}</span></div>
+                <div class="dest-sub">
+                  <span style="color:${isDirect ? 'var(--green)' : 'var(--amber)'};">● ${isDirect ? 'Direct' : 'Shuttle (Transfer at TIK)'}</span>
+                  • ${t.time ? t.time.split(' ')[1] : ''}
+                </div>
+              </div>
+            </div>
+            <div class="eta-box">${etaHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDemoData() {
+      const now = new Date();
+      renderList([
+        { plat: '1', dest: 'NOP', ttnt: '3', time: new Date(now.getTime() + 3*60000).toTimeString().slice(0,8) },
+        { plat: '1', dest: 'TIK', ttnt: '10', time: new Date(now.getTime() + 10*60000).toTimeString().slice(0,8) },
+        { plat: '1', dest: 'NOP', ttnt: '17', time: new Date(now.getTime() + 17*60000).toTimeString().slice(0,8) }
+      ]);
+    }
+
+    // Interval timers
     setInterval(updateClock, 1000);
     setInterval(() => {
       countdown = countdown > 1 ? countdown - 1 : 30;
-      document.getElementById('refresh-timer').textContent = countdown;
-      if (countdown === 30) {
-        fetchDepartures();
-      }
+      document.getElementById('timer').textContent = countdown;
+      if (countdown === 30) loadDepartures();
     }, 1000);
 
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-      fetchDepartures();
-    });
-
-    // Initial Execution
     updateClock();
-    fetchDepartures();
+    loadDepartures();
   </script>
 </body>
 </html>
