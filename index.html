@@ -1,122 +1,207 @@
-// ==UserScript==
-// @name         MTR LOHAS Park Live Departures for GitHub Dashboard
-// @namespace    https://github.com/
-// @version      1.0
-// @description  Display real-time LOHAS Park MTR departure times on your GitHub dashboard
-// @author       You
-// @match        https://github.com/dashboard*
-// @match        https://github.com/
-// @grant        GM_xmlhttpRequest
-// @connect      rt.data.gov.hk
-// ==/UserScript==
-
-(function() {
-    'use strict';
-
-    const DEST_NAMES = {
-        'NOP': { en: 'North Point', zh: '北角' },
-        'TIK': { en: 'Tiu Keng Leng', zh: '調景嶺' },
-        'POA': { en: 'Po Lam', zh: '寶琳' }
-    };
-
-    function createMTRWidget() {
-        if (document.getElementById('mtr-lohas-widget')) return;
-
-        // Container styled to match GitHub's dark/light UI
-        const widget = document.createElement('div');
-        widget.id = 'mtr-lohas-widget';
-        widget.style.cssText = `
-            margin-bottom: 20px;
-            padding: 16px;
-            background: var(--bgColor-muted, #161b22);
-            border: 1px solid var(--borderColor-default, #30363d);
-            border-radius: 8px;
-            color: var(--fgColor-default, #c9d1d9);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            font-size: 13px;
-        `;
-
-        widget.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--borderColor-muted, #21262d); padding-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #704285;"></span>
-                    <strong style="color: var(--fgColor-emphasis, #f0f6fc); font-size: 14px;">LOHAS Park (康城)</strong>
-                    <span style="font-size: 11px; opacity: 0.7;">Tseung Kwan O Line</span>
-                </div>
-                <button id="mtr-refresh-btn" style="background: none; border: 1px solid var(--borderColor-default, #30363d); color: inherit; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 11px;">🔄 Refresh</button>
-            </div>
-            <div id="mtr-schedule-content">Loading live departures...</div>
-        `;
-
-        // Insert into GitHub dashboard sidebar or feed
-        const targetContainer = document.querySelector('aside') || document.querySelector('.news') || document.querySelector('#dashboard');
-        if (targetContainer) {
-            targetContainer.insertBefore(widget, targetContainer.firstChild);
-        }
-
-        document.getElementById('mtr-refresh-btn').addEventListener('click', fetchSchedule);
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOHAS Park MTR Live Departures | 康城站實時班次</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151c2e;
+      --card-inner: #1b243b;
+      --border-color: #273553;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --tkl-purple: #704285;
+      --accent-green: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-red: #f87171;
     }
 
-    function fetchSchedule() {
-        const contentDiv = document.getElementById('mtr-schedule-content');
-        if (!contentDiv) return;
-
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP",
-            onload: function(response) {
-                try {
-                    const data = JSON.parse(response.responseText);
-                    if (data.status === 0 || !data.data || !data.data['TKL-LHP']) {
-                        contentDiv.innerHTML = '<span style="color: #8b949e;">Service not available or outside operating hours.</span>';
-                        return;
-                    }
-
-                    const departures = data.data['TKL-LHP'].UP || [];
-                    if (departures.length === 0) {
-                        contentDiv.innerHTML = '<span style="color: #8b949e;">No upcoming departures.</span>';
-                        return;
-                    }
-
-                    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
-                    departures.forEach(train => {
-                        const dest = DEST_NAMES[train.dest] ? `${DEST_NAMES[train.dest].en} (${DEST_NAMES[train.dest].zh})` : train.dest;
-                        const ttnt = train.ttnt === '0' || train.ttnt === '1' ? 'Due / Arriving' : `${train.ttnt} min`;
-                        const isDirect = train.dest === 'NOP';
-
-                        html += `
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--bgColor-default, #0d1117); border-radius: 6px; border: 1px solid var(--borderColor-muted, #21262d);">
-                                <div>
-                                    <span style="font-weight: 600; color: var(--fgColor-emphasis, #f0f6fc);">${dest}</span>
-                                    <div style="font-size: 11px; color: ${isDirect ? '#3fb950' : '#d29922'};">
-                                        ${isDirect ? 'Direct to HK Island' : 'Shuttle to TIK / Transfer'} • Plat ${train.plat}
-                                    </div>
-                                </div>
-                                <div style="font-weight: bold; font-family: monospace; font-size: 13px; color: ${train.ttnt <= 2 ? '#e3b341' : '#bc8cff'};">
-                                    ${ttnt}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    html += '</div>';
-                    contentDiv.innerHTML = html;
-                } catch (e) {
-                    contentDiv.innerHTML = '<span style="color: #f85149;">Error parsing live MTR data.</span>';
-                }
-            },
-            onerror: function() {
-                contentDiv.innerHTML = '<span style="color: #f85149;">Failed to connect to MTR Open Data API.</span>';
-            }
-        });
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
     }
 
-    const observer = new MutationObserver(() => {
-        if (!document.getElementById('mtr-lohas-widget')) {
-            createMTRWidget();
-            fetchSchedule();
-        }
-    });
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
 
-    observer.observe(document.body, { childList: true, subtree: true });
-    setInterval(fetchSchedule, 30000); // 30s auto-refresh
-})();
+    .dashboard-container {
+      width: 100%;
+      max-width: 580px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    .line-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #d8b4fe;
+      margin-bottom: 4px;
+    }
+
+    .line-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--tkl-purple);
+      box-shadow: 0 0 8px var(--tkl-purple);
+    }
+
+    .station-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .station-name span {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-left: 6px;
+      font-weight: normal;
+    }
+
+    .clock-section {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .clock-time {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .clock-refresh {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0 12px 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .btn-refresh {
+      background: var(--card-inner);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-refresh:hover {
+      background: var(--border-color);
+    }
+
+    .btn-refresh:active {
+      transform: scale(0.97);
+    }
+
+    .departure-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .train-card {
+      background: var(--card-inner);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.2s ease;
+    }
+
+    .train-card:hover {
+      border-color: #4b5563;
+    }
+
+    .train-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .plat-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(112, 66, 133, 0.25);
+      border: 1px solid var(--tkl-purple);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #e9d5ff;
+    }
+
+    .plat-title {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      opacity: 0.8;
+      line-height: 1;
+    }
+
+    .plat-num {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .dest-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .dest-title span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+
+    .dest-meta {
+      font-size: 0.75rem;
+      margin-top: 2px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .route-direct {
