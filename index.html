@@ -1,0 +1,122 @@
+// ==UserScript==
+// @name         MTR LOHAS Park Live Departures for GitHub Dashboard
+// @namespace    https://github.com/
+// @version      1.0
+// @description  Display real-time LOHAS Park MTR departure times on your GitHub dashboard
+// @author       You
+// @match        https://github.com/dashboard*
+// @match        https://github.com/
+// @grant        GM_xmlhttpRequest
+// @connect      rt.data.gov.hk
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const DEST_NAMES = {
+        'NOP': { en: 'North Point', zh: '北角' },
+        'TIK': { en: 'Tiu Keng Leng', zh: '調景嶺' },
+        'POA': { en: 'Po Lam', zh: '寶琳' }
+    };
+
+    function createMTRWidget() {
+        if (document.getElementById('mtr-lohas-widget')) return;
+
+        // Container styled to match GitHub's dark/light UI
+        const widget = document.createElement('div');
+        widget.id = 'mtr-lohas-widget';
+        widget.style.cssText = `
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--bgColor-muted, #161b22);
+            border: 1px solid var(--borderColor-default, #30363d);
+            border-radius: 8px;
+            color: var(--fgColor-default, #c9d1d9);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            font-size: 13px;
+        `;
+
+        widget.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--borderColor-muted, #21262d); padding-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: #704285;"></span>
+                    <strong style="color: var(--fgColor-emphasis, #f0f6fc); font-size: 14px;">LOHAS Park (康城)</strong>
+                    <span style="font-size: 11px; opacity: 0.7;">Tseung Kwan O Line</span>
+                </div>
+                <button id="mtr-refresh-btn" style="background: none; border: 1px solid var(--borderColor-default, #30363d); color: inherit; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 11px;">🔄 Refresh</button>
+            </div>
+            <div id="mtr-schedule-content">Loading live departures...</div>
+        `;
+
+        // Insert into GitHub dashboard sidebar or feed
+        const targetContainer = document.querySelector('aside') || document.querySelector('.news') || document.querySelector('#dashboard');
+        if (targetContainer) {
+            targetContainer.insertBefore(widget, targetContainer.firstChild);
+        }
+
+        document.getElementById('mtr-refresh-btn').addEventListener('click', fetchSchedule);
+    }
+
+    function fetchSchedule() {
+        const contentDiv = document.getElementById('mtr-schedule-content');
+        if (!contentDiv) return;
+
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: "https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP",
+            onload: function(response) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    if (data.status === 0 || !data.data || !data.data['TKL-LHP']) {
+                        contentDiv.innerHTML = '<span style="color: #8b949e;">Service not available or outside operating hours.</span>';
+                        return;
+                    }
+
+                    const departures = data.data['TKL-LHP'].UP || [];
+                    if (departures.length === 0) {
+                        contentDiv.innerHTML = '<span style="color: #8b949e;">No upcoming departures.</span>';
+                        return;
+                    }
+
+                    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                    departures.forEach(train => {
+                        const dest = DEST_NAMES[train.dest] ? `${DEST_NAMES[train.dest].en} (${DEST_NAMES[train.dest].zh})` : train.dest;
+                        const ttnt = train.ttnt === '0' || train.ttnt === '1' ? 'Due / Arriving' : `${train.ttnt} min`;
+                        const isDirect = train.dest === 'NOP';
+
+                        html += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--bgColor-default, #0d1117); border-radius: 6px; border: 1px solid var(--borderColor-muted, #21262d);">
+                                <div>
+                                    <span style="font-weight: 600; color: var(--fgColor-emphasis, #f0f6fc);">${dest}</span>
+                                    <div style="font-size: 11px; color: ${isDirect ? '#3fb950' : '#d29922'};">
+                                        ${isDirect ? 'Direct to HK Island' : 'Shuttle to TIK / Transfer'} • Plat ${train.plat}
+                                    </div>
+                                </div>
+                                <div style="font-weight: bold; font-family: monospace; font-size: 13px; color: ${train.ttnt <= 2 ? '#e3b341' : '#bc8cff'};">
+                                    ${ttnt}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    contentDiv.innerHTML = html;
+                } catch (e) {
+                    contentDiv.innerHTML = '<span style="color: #f85149;">Error parsing live MTR data.</span>';
+                }
+            },
+            onerror: function() {
+                contentDiv.innerHTML = '<span style="color: #f85149;">Failed to connect to MTR Open Data API.</span>';
+            }
+        });
+    }
+
+    const observer = new MutationObserver(() => {
+        if (!document.getElementById('mtr-lohas-widget')) {
+            createMTRWidget();
+            fetchSchedule();
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    setInterval(fetchSchedule, 30000); // 30s auto-refresh
+})();
