@@ -205,3 +205,214 @@
     }
 
     .route-direct {
+      color: var(--accent-green);
+    }
+
+    .route-shuttle {
+      color: var(--accent-amber);
+    }
+
+    .time-sched {
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .train-right {
+      text-align: right;
+    }
+
+    .eta-badge {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #d8b4fe;
+    }
+
+    .eta-unit {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: 2px;
+      font-family: inherit;
+    }
+
+    .eta-arriving {
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: var(--accent-amber);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-msg {
+      text-align: center;
+      padding: 30px 16px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <div class="header">
+      <div>
+        <div class="line-badge">
+          <span class="line-dot"></span>
+          <span>Tseung Kwan O Line (將軍澳綫)</span>
+        </div>
+        <div class="station-name">LOHAS Park <span>康城</span></div>
+      </div>
+      <div class="clock-section">
+        <div class="clock-time" id="clock">--:--:--</div>
+        <div class="clock-refresh">Auto-refreshes in <span id="refresh-timer">30</span>s</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <span>Platform Departures (往港島 / 調景嶺)</span>
+      <button class="btn-refresh" id="refreshBtn">🔄 Refresh</button>
+    </div>
+
+    <div class="departure-list" id="departureList">
+      <div class="status-msg">Fetching live timetable...</div>
+    </div>
+
+    <div class="footer">
+      <span>Data source: MTR Open Data (data.gov.hk)</span>
+      <span id="lastUpdated">Updated: --</span>
+    </div>
+  </div>
+
+  <script>
+    const STATION_NAMES = {
+      'NOP': { en: 'North Point', zh: '北角' },
+      'TIK': { en: 'Tiu Keng Leng', zh: '調景嶺' },
+      'POA': { en: 'Po Lam', zh: '寶琳' },
+      'TKO': { en: 'Tseung Kwan O', zh: '將軍澳' }
+    };
+
+    let countdown = 30;
+    const API_URL = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-HK', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+    }
+
+    async function fetchDepartures() {
+      const listContainer = document.getElementById('departureList');
+      const lastUpdatedEl = document.getElementById('lastUpdated');
+      countdown = 30;
+
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        
+        const data = await response.json();
+
+        if (data.status === 0 || !data.data || !data.data['TKL-LHP']) {
+          listContainer.innerHTML = '<div class="status-msg">No train service or outside operating hours.</div>';
+          return;
+        }
+
+        const departures = data.data['TKL-LHP'].UP || [];
+
+        if (departures.length === 0) {
+          listContainer.innerHTML = '<div class="status-msg">No upcoming departures reported.</div>';
+          return;
+        }
+
+        let html = '';
+        departures.forEach(train => {
+          const destInfo = STATION_NAMES[train.dest] || { en: train.dest, zh: '' };
+          const isDirect = train.dest === 'NOP';
+          const schedTime = train.time ? train.time.split(' ')[1] : '';
+          const ttntNum = parseInt(train.ttnt, 10);
+
+          let etaMarkup = '';
+          if (train.ttnt === '0' || train.ttnt === '1' || ttntNum <= 1) {
+            etaMarkup = '<span class="eta-arriving">Arriving / 即將抵達</span>';
+          } else {
+            etaMarkup = `<span class="eta-badge">${train.ttnt}<span class="eta-unit">min</span></span>`;
+          }
+
+          html += `
+            <div class="train-card">
+              <div class="train-left">
+                <div class="plat-badge">
+                  <span class="plat-title">Plat</span>
+                  <span class="plat-num">${train.plat || '1'}</span>
+                </div>
+                <div>
+                  <div class="dest-title">
+                    ${destInfo.en} <span>${destInfo.zh}</span>
+                  </div>
+                  <div class="dest-meta">
+                    <span class="${isDirect ? 'route-direct' : 'route-shuttle'}">
+                      ● ${isDirect ? 'Direct to HK Island' : 'Shuttle (Transfer at TIK/TKO)'}
+                    </span>
+                    <span>•</span>
+                    <span class="time-sched">${schedTime}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="train-right">
+                ${etaMarkup}
+              </div>
+            </div>
+          `;
+        });
+
+        listContainer.innerHTML = html;
+        const now = new Date();
+        lastUpdatedEl.textContent = `Updated: ${now.toLocaleTimeString('en-HK', { hour12: false })}`;
+
+      } catch (err) {
+        console.error(err);
+        listContainer.innerHTML = '<div class="status-msg" style="color: var(--accent-red);">Unable to fetch live data. Please check connection.</div>';
+      }
+    }
+
+    // Setup timer & click listeners
+    setInterval(updateClock, 1000);
+    setInterval(() => {
+      countdown = countdown > 1 ? countdown - 1 : 30;
+      document.getElementById('refresh-timer').textContent = countdown;
+      if (countdown === 30) {
+        fetchDepartures();
+      }
+    }, 1000);
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      fetchDepartures();
+    });
+
+    // Initial Execution
+    updateClock();
+    fetchDepartures();
+  </script>
+</body>
+</html>
