@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LOHAS Park MTR Departures | 康城站實時班次</title>
+  <title>LOHAS Park MTR Live | 康城站實時班次</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --card-inner: #334155;
-      --border: #475569;
+      --bg: #0b0f19;
+      --card: #161f30;
+      --card-item: #212d45;
+      --border: #334155;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --tkl-purple: #9333ea;
-      --accent-green: #22c55e;
-      --accent-amber: #f59e0b;
-      --accent-red: #ef4444;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
     }
 
     * {
@@ -32,17 +32,17 @@
       justify-content: center;
       align-items: flex-start;
       min-height: 100vh;
-      padding: 24px 16px;
+      padding: 20px 14px;
     }
 
     .dashboard {
       width: 100%;
-      max-width: 540px;
+      max-width: 520px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 22px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
     .header {
@@ -68,7 +68,7 @@
       height: 10px;
       border-radius: 50%;
       background-color: var(--tkl-purple);
-      box-shadow: 0 0 6px var(--tkl-purple);
+      box-shadow: 0 0 8px var(--tkl-purple);
     }
 
     .station-title {
@@ -85,7 +85,7 @@
 
     .clock-box {
       text-align: right;
-      font-family: monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     .clock-time {
@@ -107,13 +107,14 @@
     }
 
     .btn {
-      background: var(--card-inner);
+      background: var(--card-item);
       color: var(--text);
       border: 1px solid var(--border);
-      padding: 6px 12px;
+      padding: 5px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.75rem;
+      transition: opacity 0.2s;
     }
 
     .btn:hover {
@@ -127,9 +128,9 @@
     }
 
     .train-item {
-      background: var(--card-inner);
+      background: var(--card-item);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 12px 14px;
       display: flex;
       justify-content: space-between;
@@ -175,23 +176,28 @@
     .eta-val {
       font-size: 1.4rem;
       font-weight: bold;
-      font-family: monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       color: #d8b4fe;
     }
 
     .eta-now {
       font-size: 0.75rem;
       font-weight: bold;
-      color: var(--accent-amber);
-      padding: 3px 8px;
+      color: var(--amber);
+      padding: 4px 8px;
       background: rgba(245, 158, 11, 0.15);
-      border: 1px solid var(--accent-amber);
+      border: 1px solid var(--amber);
       border-radius: 12px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      50% { opacity: 0.5; }
     }
 
     .status-msg {
       text-align: center;
-      padding: 24px;
+      padding: 24px 10px;
       font-size: 0.85rem;
       color: var(--text-muted);
     }
@@ -228,17 +234,17 @@
     <!-- Toolbar -->
     <div class="toolbar">
       <span>Platform Departures (往港島 / 調景嶺)</span>
-      <button class="btn" onclick="fetchDepartures()">🔄 Refresh Now</button>
+      <button class="btn" onclick="fetchDepartures()">🔄 Refresh</button>
     </div>
 
     <!-- Departure List -->
     <div class="train-list" id="trainList">
-      <div class="status-msg" id="statusMessage">Connecting to MTR Live Data...</div>
+      <div class="status-msg">Connecting to MTR live data...</div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <span id="sourceLabel">Source: MTR Open Data via CORS Gateway</span>
+      <span>Source: MTR Open Data</span>
       <span id="updatedTime">Updated: --</span>
     </div>
   </div>
@@ -264,66 +270,66 @@
       countdown = 30;
 
       const rawUrl = 'https://rt.data.gov.hk/v1/transport/mtr/getSchedule.php?line=TKL&sta=LHP';
-      // Route through public CORS proxy so it works in any browser and local file
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`;
+      
+      // Endpoints to try sequentially in case of CORS or proxy limits
+      const endpoints = [
+        `https://corsproxy.io/?url=${encodeURIComponent(rawUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`,
+        rawUrl
+      ];
 
-      try {
-        let response = null;
+      let data = null;
+
+      for (const endpoint of endpoints) {
         try {
-          // Attempt 1: Direct fetch
-          response = await fetch(rawUrl);
+          const res = await fetch(endpoint);
+          if (!res.ok) continue;
+          const text = await res.text();
+          data = JSON.parse(text);
+          if (data && data.status !== undefined) break; // Valid JSON received
         } catch (e) {
-          // Attempt 2: CORS Proxy if direct fetch is blocked
-          response = await fetch(proxyUrl);
+          // Fall through to next endpoint
         }
+      }
 
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        
-        const text = await response.text();
-        const json = JSON.parse(text);
+      if (!data || data.status === 0 || !data.data || !data.data['TKL-LHP']) {
+        listEl.innerHTML = '<div class="status-msg">No train service reported or outside operating hours.</div>';
+        return;
+      }
 
-        if (json.status === 0 || !json.data || !json.data['TKL-LHP']) {
-          listEl.innerHTML = '<div class="status-msg">No train service or outside operating hours.</div>';
-          return;
-        }
+      const departures = data.data['TKL-LHP'].UP || [];
 
-        const departures = json.data['TKL-LHP'].UP || [];
+      if (departures.length === 0) {
+        listEl.innerHTML = '<div class="status-msg">No upcoming departures at this moment.</div>';
+        return;
+      }
 
-        if (departures.length === 0) {
-          listEl.innerHTML = '<div class="status-msg">No upcoming departures at this moment.</div>';
-          return;
-        }
+      listEl.innerHTML = departures.map(t => {
+        const dest = STATIONS[t.dest] || { en: t.dest, zh: '' };
+        const isDirect = t.dest === 'NOP';
+        const mins = parseInt(t.ttnt, 10);
+        const etaHtml = (mins <= 1 || t.ttnt === '0')
+          ? `<span class="eta-now">Arriving / 即將抵達</span>`
+          : `<span class="eta-val">${t.ttnt}<span style="font-size:0.75rem; color: var(--text-muted);"> min</span></span>`;
 
-        listEl.innerHTML = departures.map(t => {
-          const dest = STATIONS[t.dest] || { en: t.dest, zh: '' };
-          const isDirect = t.dest === 'NOP';
-          const mins = parseInt(t.ttnt, 10);
-          const etaHtml = (mins <= 1 || t.ttnt === '0') 
-            ? `<span class="eta-now">Arriving / 即將抵達</span>` 
-            : `<span class="eta-val">${t.ttnt}<span style="font-size:0.75rem; color: var(--text-muted);"> min</span></span>`;
-
-          return `
-            <div class="train-item">
-              <div class="train-info">
-                <div class="plat">P${t.plat || '1'}</div>
-                <div>
-                  <div class="dest-name">${dest.en} <span style="font-size:0.85rem; color:var(--text-muted);">${dest.zh}</span></div>
-                  <div class="dest-sub">
-                    <span style="color:${isDirect ? 'var(--accent-green)' : 'var(--accent-amber)'};">● ${isDirect ? 'Direct (直達港島)' : 'Shuttle (需轉車)'}</span>
-                    • ${t.time ? t.time.split(' ')[1] : ''}
-                  </div>
+        return `
+          <div class="train-item">
+            <div class="train-info">
+              <div class="plat">P${t.plat || '1'}</div>
+              <div>
+                <div class="dest-name">${dest.en} <span style="font-size:0.85rem; color:var(--text-muted);">${dest.zh}</span></div>
+                <div class="dest-sub">
+                  <span style="color:${isDirect ? 'var(--green)' : 'var(--amber)'};">● ${isDirect ? 'Direct (直達港島)' : 'Shuttle (需於調景嶺轉車)'}</span>
+                  • ${t.time ? t.time.split(' ')[1] : ''}
                 </div>
               </div>
-              <div class="eta-box">${etaHtml}</div>
             </div>
-          `;
-        }).join('');
+            <div class="eta-box">${etaHtml}</div>
+          </div>
+        `;
+      }).join('');
 
-        updatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-HK', { hour12: false });
-      } catch (err) {
-        console.error('Error fetching MTR schedule:', err);
-        listEl.innerHTML = '<div class="status-msg" style="color: var(--accent-red);">Failed to load live MTR data. Please check internet access or try refreshing.</div>';
-      }
+      updatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-HK', { hour12: false });
     }
 
     // Interval timers
